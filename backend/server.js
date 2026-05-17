@@ -18,6 +18,13 @@ app.use(express.json()); // Mem-parsing JSON payload
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'API_KEY_ANDA_DI_SINI');
 
 // ==========================================
+// ENDPOINT 0: Root Check (Untuk memastikan server nyala di browser)
+// ==========================================
+app.get('/', (req, res) => {
+  res.send('SnapCheat Backend API is running successfully! 🚀');
+});
+
+// ==========================================
 // ENDPOINT 1: Chatbot AI (Untuk pojok kanan bawah)
 // ==========================================
 app.post('/api/chat', async (req, res) => {
@@ -109,7 +116,7 @@ app.post('/api/flashcards', async (req, res) => {
 });
 
 // Jalankan Server
-app.listen(PORT, () => {
-  console.log(`🚀 Backend SnapCheat berjalan di http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Backend SnapCheat berjalan di port ${PORT}`);
   console.log(`🤖 Menunggu koneksi dari Frontend...`);
 });
