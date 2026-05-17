@@ -10,6 +10,7 @@ const LandingPage = () => {
   const [generatedFlashcards, setGeneratedFlashcards] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeCardIndex, setActiveCardIndex] = useState(0);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     AOS.init({
@@ -67,13 +68,43 @@ const LandingPage = () => {
             <a href="#features" className="hover:text-[#171717] transition-colors">Fitur</a>
             <a href="#faq" className="hover:text-[#171717] transition-colors">FAQ</a>
           </div>
-          <div className="flex items-center gap-4">
-            <a href="#" className="hidden md:block text-sm font-medium text-[#666666] hover:text-[#171717] transition-colors">Masuk</a>
+          <div className="hidden md:flex items-center gap-4">
+            <a href="#" className="text-sm font-medium text-[#666666] hover:text-[#171717] transition-colors">Masuk</a>
             <button className="bg-[#2FA084] hover:bg-[#258069] text-white px-5 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer">
               Mulai Gratis
             </button>
           </div>
+          {/* Hamburger Icon */}
+          <button 
+            className="md:hidden flex flex-col items-center justify-center w-10 h-10 rounded-xl bg-[#fafafa] border border-[#eaeaea] text-[#171717]"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            {isMobileMenuOpen ? (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+            )}
+          </button>
         </div>
+
+        {/* Mobile Dropdown Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden absolute top-16 left-0 w-full bg-white border-b border-[#eaeaea] p-6 shadow-xl animate-fade-in flex flex-col gap-6">
+            <div className="flex flex-col gap-4 text-sm font-medium text-[#666666]">
+              <a href="#hero" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-[#2FA084] transition-colors">Beranda</a>
+              <a href="#about" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-[#2FA084] transition-colors">Tentang</a>
+              <a href="#goal" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-[#2FA084] transition-colors">Tujuan</a>
+              <a href="#features" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-[#2FA084] transition-colors">Fitur</a>
+              <a href="#faq" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-[#2FA084] transition-colors">FAQ</a>
+            </div>
+            <div className="flex flex-col gap-3 pt-4 border-t border-[#eaeaea]">
+              <a href="#" className="text-center py-2 text-sm font-medium text-[#666666] hover:text-[#171717]">Masuk</a>
+              <button className="w-full bg-[#2FA084] hover:bg-[#258069] text-white px-5 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer">
+                Mulai Gratis
+              </button>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
