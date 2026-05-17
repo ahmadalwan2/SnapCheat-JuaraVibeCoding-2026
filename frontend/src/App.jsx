@@ -109,10 +109,10 @@ function App() {
     <div className="min-h-screen bg-[#fafafa] text-[#171717] font-sans selection:bg-[#2FA084] selection:text-white">
       <LandingPage />
       {/* Floating Chatbot Widget */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
+      <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end gap-4">
         {/* Chat Window Popup */}
         {isChatOpen && (
-          <div className="w-80 sm:w-96 bg-white border border-[#eaeaea] rounded-2xl shadow-2xl overflow-hidden flex flex-col origin-bottom-right transition-all duration-300">
+          <div className="w-[calc(100vw-2rem)] sm:w-96 bg-white border border-[#eaeaea] rounded-2xl shadow-2xl overflow-hidden flex flex-col origin-bottom-right transition-all duration-300">
             {/* Chat Header */}
             <div className="bg-[#2FA084] p-4 flex items-center justify-between text-white">
               <div className="flex items-center gap-3">
