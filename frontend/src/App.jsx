@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 
 function App() {
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
   // === HELPER UNTUK FORMAT MARKDOWN BOLD ===
   const formatMessage = (text) => {
     if (!text) return "";
@@ -84,7 +86,7 @@ function App() {
     setIsChatLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5000/api/chat", {
+      const response = await fetch(`${API_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: msgToSend, audioBase64: audioBase64 })
@@ -114,7 +116,7 @@ function App() {
     setGeneratedFlashcards(null);
 
     try {
-      const response = await fetch("http://localhost:5000/api/flashcards", {
+      const response = await fetch(`${API_URL}/api/flashcards`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text_content: mockupInput })
