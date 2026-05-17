@@ -106,7 +106,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fafafa] text-[#171717] font-sans selection:bg-[#2FA084] selection:text-white">
+    <div className="min-h-screen bg-[#fafafa] text-[#171717] font-sans selection:bg-[#2FA084] selection:text-white overflow-x-hidden">
       <LandingPage />
       {/* Floating Chatbot Widget */}
       <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end gap-4">
