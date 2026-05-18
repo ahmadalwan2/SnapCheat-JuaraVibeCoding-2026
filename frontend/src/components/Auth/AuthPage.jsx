@@ -51,34 +51,68 @@ const AuthPageContent = ({ type, onLoginSuccess }) => {
     }
   };
 
-  const loginWithGoogle = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      setIsLoading(true);
-      setError('');
-      try {
-        const res = await fetch(`${API_URL}/api/auth/google`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: tokenResponse.access_token }),
-        });
+  // Fungsi penangan login Google terpusat (untuk popup maupun redirect seluler)
+  const handleGoogleLoginWithToken = async (token) => {
+    setIsLoading(true);
+    setError('');
+    try {
+      const res = await fetch(`${API_URL}/api/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
 
-        const data = await res.json();
-        
-        if (res.ok) {
-          localStorage.setItem('snapcheat_token', data.token);
-          localStorage.setItem('snapcheat_user', JSON.stringify(data.user));
-          onLoginSuccess(data.user);
-        } else {
-          setError(data.error || 'Gagal masuk dengan Google');
-        }
-      } catch (err) {
-        setError('Gagal menghubungi server backend.');
-      } finally {
-        setIsLoading(false);
+      const data = await res.json();
+      
+      if (res.ok) {
+        localStorage.setItem('snapcheat_token', data.token);
+        localStorage.setItem('snapcheat_user', JSON.stringify(data.user));
+        onLoginSuccess(data.user);
+      } else {
+        setError(data.error || 'Gagal masuk dengan Google');
       }
+    } catch (err) {
+      setError('Gagal menghubungi server backend.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Deteksi cerdas tipe perangkat
+  const isMobileDevice = () => {
+    return window.innerWidth < 1024 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  };
+
+  const loginWithGoogle = useGoogleLogin({
+    onSuccess: (tokenResponse) => {
+      handleGoogleLoginWithToken(tokenResponse.access_token);
     },
-    onError: () => setError('Autentikasi Google dibatalkan atau gagal.')
+    onError: () => setError('Autentikasi Google dibatalkan atau gagal.'),
+    ux_mode: isMobileDevice() ? 'redirect' : 'popup',
   });
+
+  // Handle redirect callback token dari Google untuk perangkat seluler
+  React.useEffect(() => {
+    // 1. Cek Hash Fragment
+    const hash = window.location.hash;
+    if (hash) {
+      const params = new URLSearchParams(hash.substring(1));
+      const token = params.get('access_token');
+      if (token) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+        handleGoogleLoginWithToken(token);
+        return;
+      }
+    }
+
+    // 2. Cek Query Parameters (sebagai fallback)
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('access_token');
+    if (token) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      handleGoogleLoginWithToken(token);
+    }
+  }, []);
 
   return (
       <div className="min-h-screen w-full flex flex-col relative overflow-hidden bg-gradient-to-br from-[#2FA084]/20 via-[#fafafa] to-[#2FA084]/10 selection:bg-[#2FA084] selection:text-white font-sans text-[#171717]">
