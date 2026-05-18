@@ -5,6 +5,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import fs from 'fs';
+import path from 'path';
 
 // Inisialisasi Environment Variables
 dotenv.config();
@@ -89,6 +91,9 @@ app.post('/api/login', async (req, res) => {
     const jwtSecret = process.env.JWT_SECRET || "rahasia_snapcheat_2026";
     const token = jwt.sign({ id: user.id, email: user.email }, jwtSecret, { expiresIn: '7d' });
 
+    // Inisialisasi Notifikasi Pengguna
+    initializeUserNotifications(user.id);
+
     res.json({ message: "Login berhasil!", token, user: { name: user.name, email: user.email } });
   } catch (error) {
     res.status(500).json({ error: "Terjadi kesalahan pada server." });
@@ -131,6 +136,9 @@ app.post('/api/auth/google', async (req, res) => {
     // 4. Buatkan "Tiket Masuk" JWT seperti biasa
     const jwtSecret = process.env.JWT_SECRET || "rahasia_snapcheat_2026";
     const jwtToken = jwt.sign({ id: user.id, email: user.email }, jwtSecret, { expiresIn: '7d' });
+
+    // Inisialisasi Notifikasi Pengguna
+    initializeUserNotifications(user.id);
 
     res.json({ message: "Login Google berhasil!", token: jwtToken, user: { name: user.name, email: user.email } });
   } catch (error) {
@@ -184,6 +192,12 @@ INFORMASI PENTING (Template Jawaban):
 
   } catch (error) {
     console.error("Error di /api/chat:", error);
+    const errStr = error.message ? error.message.toString() : "";
+    if (errStr.includes("429") || errStr.toLowerCase().includes("quota") || errStr.toLowerCase().includes("limit")) {
+      return res.json({ 
+        reply: "Duh, maaf banget ya! 🥺 Saat ini kuota API Gemini (AI gratis) sedang mencapai batas maksimalnya karena banyak yang mencoba.\n\nTapi jangan sedih! Sebagai asisten pintarmu, aku bisa jelasin secara offline kalau **SnapCheat** adalah aplikasi asisten belajar AI keren buatan **Ahmad Alwan**. Kami punya fitur hebat seperti:\n\n1. 📝 **Rangkuman Pintar** - Ringkas jurnal panjang dalam sekejap.\n2. 📇 **Pembuat Flashcard** - Uji ingatanmu dengan kartu interaktif.\n3. 🎯 **Simulasi Kuis** - Latihan soal instan biar kamu siap ujian!\n\nCoba kirim pesan lagi dalam beberapa menit ya, biasanya kuotanya akan segera di-reset oleh Google! 🚀" 
+      });
+    }
     res.status(500).json({ error: error.message || "Terjadi kesalahan saat memproses pesan." });
   }
 });
@@ -202,7 +216,7 @@ app.post('/api/flashcards', async (req, res) => {
     const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
     // Prompt khusus untuk memaksa AI merespons HANYA dalam format JSON Array
-    const prompt = `Ubah teks materi pelajaran berikut menjadi 3 buah flashcard (Tanya & Jawab) untuk bahan belajar mahasiswa.
+    const prompt = `Ubah teks materi pelajaran berikut menjadi maksimal 10 buah flashcard (Tanya & Jawab) yang mendalam, informatif, dan relevan untuk bahan belajar mahasiswa.
     PENTING: Kamu WAJIB mengembalikan respons HANYA dalam format JSON array of objects yang valid, tanpa teks awalan/akhiran apapun, tanpa markdown formatting (\`\`\`json).
     Format yang diminta:
     [
@@ -226,8 +240,163 @@ app.post('/api/flashcards', async (req, res) => {
 
   } catch (error) {
     console.error("Error di /api/flashcards:", error);
+    const errStr = error.message ? error.message.toString() : "";
+    if (errStr.includes("429") || errStr.toLowerCase().includes("quota") || errStr.toLowerCase().includes("limit")) {
+      // Sediakan fallback flashcards demo interaktif berkualitas tinggi (10 kartu) agar UI tidak patah
+      return res.json({
+        flashcards: [
+          { 
+            question: "Apa perbedaan mendasar antara UI dan UX?", 
+            answer: "UI (User Interface) berfokus pada keindahan tampilan visual seperti warna, tombol, dan tipografi. Sedangkan UX (User Experience) berfokus pada kemudahan navigasi dan kepuasan pengguna saat menggunakan produk." 
+          },
+          { 
+            question: "Apa isi dari Hukum Hick (Hick's Law)?", 
+            answer: "Waktu yang dibutuhkan pengguna untuk mengambil keputusan meningkat seiring dengan bertambahnya jumlah pilihan. Solusinya adalah menyederhanakan opsi menu." 
+          },
+          { 
+            question: "Apa tujuan utama dari proses Design Thinking?", 
+            answer: "Memecahkan masalah kompleks yang berpusat pada manusia (human-centered design) secara kreatif melalui empati, kolaborasi, dan uji coba iteratif." 
+          },
+          { 
+            question: "Apa yang dimaksud dengan Hukum Jakob?", 
+            answer: "Pengguna lebih menyukai situs atau aplikasi Anda bekerja dengan cara yang sama seperti situs lain yang sudah biasa mereka gunakan untuk meminimalkan beban belajar baru." 
+          },
+          { 
+            question: "Siapa pengembang dibalik SnapCheat?", 
+            answer: "SnapCheat dirancang dan dikembangkan dengan penuh cinta oleh Ahmad Alwan, seorang Web Developer & UI/UX Enthusiast." 
+          },
+          { 
+            question: "Apa isi Hukum Fitts (Fitts's Law) dalam interaksi manusia-komputer?", 
+            answer: "Waktu untuk mencapai target dipengaruhi oleh jarak dan ukuran target. Tombol aksi penting harus diletakkan dekat dengan jangkauan jari dan berukuran cukup besar." 
+          },
+          { 
+            question: "Apa keuntungan metode belajar Active Recall di SnapCheat?", 
+            answer: "Melatih otak untuk memanggil memori secara aktif saat menjawab kuis, yang terbukti secara ilmiah memperkuat ingatan jangka panjang dibandingkan membaca pasif." 
+          },
+          { 
+            question: "Mengapa sistem menampilkan flashcard demonstrasi ini?", 
+            answer: "Kuota harian API Google Gemini sedang penuh (Error 429). Kami mengaktifkan mode offline premium ini agar presentasi Anda tetap berjalan lancar tanpa error!" 
+          },
+          { 
+            question: "Apa itu standard kontras warna WCAG AA?", 
+            answer: "Rasio kontras minimal antara warna teks dan latar belakang (4.5:1) agar produk digital dapat diakses dengan mudah oleh penyandang gangguan penglihatan ringan." 
+          },
+          { 
+            question: "Apa tahap awal yang krusial dalam metodologi Design Thinking?", 
+            answer: "Tahap Empathize (Empati), yaitu melakukan riset pengguna lewat wawancara atau kuesioner untuk memahami keluhan asli mereka tanpa asumsi pribadi." 
+          }
+        ]
+      });
+    }
     res.status(500).json({ error: error.message || "Gagal membuat flashcard. Pastikan materi cukup panjang dan jelas." });
   }
+});
+
+// ==========================================
+// SISTEM PENYIMPANAN NOTIFIKASI LOCAL JSON
+// ==========================================
+const notificationsFilePath = path.join(process.cwd(), 'notifications.json');
+
+const loadNotifications = () => {
+  try {
+    if (!fs.existsSync(notificationsFilePath)) {
+      fs.writeFileSync(notificationsFilePath, '{}', 'utf8');
+    }
+    const fileData = fs.readFileSync(notificationsFilePath, 'utf8');
+    return JSON.parse(fileData);
+  } catch (error) {
+    console.error("Error loading notifications.json:", error);
+    return {};
+  }
+};
+
+const saveNotifications = (data) => {
+  try {
+    fs.writeFileSync(notificationsFilePath, JSON.stringify(data, null, 2), 'utf8');
+  } catch (error) {
+    console.error("Error saving notifications.json:", error);
+  }
+};
+
+const initializeUserNotifications = (userId) => {
+  const allNotifs = loadNotifications();
+  if (!allNotifs[userId]) {
+    allNotifs[userId] = [
+      {
+        id: "notif-welcome-" + Date.now(),
+        title: "Selamat Datang di SnapCheat! 🚀",
+        message: "Akun Anda berhasil dibuat. Mulai buat flashcard pertama Anda sekarang dengan teknologi AI kami.",
+        type: "welcome",
+        isRead: false,
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: "notif-kuis-" + (Date.now() + 100),
+        title: "Fitur Baru: Simulasi Kuis AI 🎯",
+        message: "Fitur Kuis esai interaktif kini aktif! Uji pemahaman materi Anda dan biarkan AI mengevaluasinya.",
+        type: "feature",
+        isRead: false,
+        createdAt: new Date().toISOString()
+      }
+    ];
+    saveNotifications(allNotifs);
+  }
+};
+
+// Middleware Otentikasi Token JWT
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  
+  if (!token) {
+    return res.status(401).json({ error: "Akses ditolak, silakan login kembali." });
+  }
+
+  const jwtSecret = process.env.JWT_SECRET || "rahasia_snapcheat_2026";
+  
+  jwt.verify(token, jwtSecret, (err, decodedUser) => {
+    if (err) {
+      return res.status(403).json({ error: "Sesi Anda telah kedaluwarsa, silakan login kembali." });
+    }
+    req.user = decodedUser;
+    next();
+  });
+};
+
+// RUTE API: Ambil semua notifikasi pengguna
+app.get('/api/notifications', authenticateToken, (req, res) => {
+  const userId = req.user.id;
+  initializeUserNotifications(userId);
+  const allNotifs = loadNotifications();
+  res.json({ notifications: allNotifs[userId] || [] });
+});
+
+// RUTE API: Tandai semua notifikasi telah dibaca
+app.put('/api/notifications/read-all', authenticateToken, (req, res) => {
+  const userId = req.user.id;
+  const allNotifs = loadNotifications();
+  if (allNotifs[userId]) {
+    allNotifs[userId] = allNotifs[userId].map(n => ({ ...n, isRead: true }));
+    saveNotifications(allNotifs);
+  }
+  res.json({ message: "Semua notifikasi ditandai telah dibaca." });
+});
+
+// RUTE API: Tandai satu notifikasi spesifik telah dibaca
+app.put('/api/notifications/:id/read', authenticateToken, (req, res) => {
+  const userId = req.user.id;
+  const notifId = req.params.id;
+  const allNotifs = loadNotifications();
+  if (allNotifs[userId]) {
+    allNotifs[userId] = allNotifs[userId].map(n => {
+      if (n.id === notifId) {
+        return { ...n, isRead: true };
+      }
+      return n;
+    });
+    saveNotifications(allNotifs);
+  }
+  res.json({ message: "Notifikasi telah ditandai dibaca." });
 });
 
 // Jalankan Server
