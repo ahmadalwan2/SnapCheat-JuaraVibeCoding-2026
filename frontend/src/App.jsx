@@ -1,8 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LandingPage from './components/LandingPage/LandingPage';
+import AuthPage from './components/Auth/AuthPage';
+import Dashboard from './components/Dashboard/Dashboard';
 
 function App() {
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+  // === STATES UNTUK AUTH ===
+  const [currentView, setCurrentView] = useState('landing'); // 'landing' | 'login' | 'register'
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem('snapcheat_user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+      setCurrentView('dashboard');
+    }
+  }, []);
+
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
+    setCurrentView('dashboard');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('snapcheat_token');
+    localStorage.removeItem('snapcheat_user');
+    setUser(null);
+    setCurrentView('landing');
+  };
 
   // === HELPER UNTUK FORMAT MARKDOWN BOLD ===
   const formatMessage = (text) => {
@@ -105,9 +131,24 @@ function App() {
     }
   };
 
+  if (currentView === 'login' || currentView === 'register') {
+    return (
+      <AuthPage 
+        type={currentView} 
+        setType={setCurrentView} 
+        onBack={() => setCurrentView('landing')} 
+        onLoginSuccess={handleLoginSuccess}
+      />
+    );
+  }
+
+  if (currentView === 'dashboard' && user) {
+    return <Dashboard user={user} handleLogout={handleLogout} setCurrentView={setCurrentView} />;
+  }
+
   return (
     <div className="min-h-screen bg-[#fafafa] text-[#171717] font-sans selection:bg-[#2FA084] selection:text-white overflow-x-hidden">
-      <LandingPage />
+      <LandingPage setCurrentView={setCurrentView} user={user} handleLogout={handleLogout} />
       {/* Floating Chatbot Widget */}
       <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex flex-col items-end gap-4">
         {/* Chat Window Popup */}

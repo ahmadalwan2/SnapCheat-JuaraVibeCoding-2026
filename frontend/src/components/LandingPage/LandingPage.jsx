@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
 
-const LandingPage = () => {
+const LandingPage = ({ setCurrentView, user, handleLogout }) => {
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   // === STATES UNTUK MOCKUP FLASHCARD ===
@@ -69,10 +69,21 @@ const LandingPage = () => {
             <a href="#faq" className="hover:text-[#171717] transition-colors">FAQ</a>
           </div>
           <div className="hidden md:flex items-center gap-4">
-            <a href="#" className="text-sm font-medium text-[#666666] hover:text-[#171717] transition-colors">Masuk</a>
-            <button className="bg-[#2FA084] hover:bg-[#258069] text-white px-5 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer">
-              Mulai Gratis
-            </button>
+            {user ? (
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium text-[#171717]">Halo, {user.name.split(' ')[0]}!</span>
+                <button onClick={() => setCurrentView('dashboard')} className="bg-[#2FA084] hover:bg-[#258069] text-white px-5 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer">
+                  Buka Dashboard
+                </button>
+              </div>
+            ) : (
+              <>
+                <button onClick={() => setCurrentView('login')} className="text-sm font-medium text-[#666666] hover:text-[#171717] transition-colors cursor-pointer">Masuk</button>
+                <button onClick={() => setCurrentView('register')} className="bg-[#2FA084] hover:bg-[#258069] text-white px-5 py-2 rounded-xl text-sm font-medium transition-colors cursor-pointer">
+                  Mulai Gratis
+                </button>
+              </>
+            )}
           </div>
           {/* Hamburger Icon */}
           <button 
@@ -98,10 +109,21 @@ const LandingPage = () => {
               <a href="#faq" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-[#2FA084] transition-colors">FAQ</a>
             </div>
             <div className="flex flex-col gap-3 pt-4 border-t border-[#eaeaea]">
-              <a href="#" className="text-center py-2 text-sm font-medium text-[#666666] hover:text-[#171717]">Masuk</a>
-              <button className="w-full bg-[#2FA084] hover:bg-[#258069] text-white px-5 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer">
-                Mulai Gratis
-              </button>
+              {user ? (
+                <>
+                  <span className="text-center py-2 text-sm font-medium text-[#171717]">Halo, {user.name}!</span>
+                  <button onClick={() => { setCurrentView('dashboard'); setIsMobileMenuOpen(false); }} className="w-full bg-[#2FA084] hover:bg-[#258069] text-white px-5 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer">
+                    Buka Dashboard
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button onClick={() => { setCurrentView('login'); setIsMobileMenuOpen(false); }} className="text-center py-2 text-sm font-medium text-[#666666] hover:text-[#171717] cursor-pointer">Masuk</button>
+                  <button onClick={() => { setCurrentView('register'); setIsMobileMenuOpen(false); }} className="w-full bg-[#2FA084] hover:bg-[#258069] text-white px-5 py-3 rounded-xl text-sm font-medium transition-colors cursor-pointer">
+                    Mulai Gratis
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -123,9 +145,11 @@ const LandingPage = () => {
             SnapCheat menyatukan PDF, slide dosen, dan catatanmu. Biarkan AI membuat flashcard dan kuis interaktif agar kamu bisa fokus menguasai materi tanpa lelah membaca.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16" data-aos="fade-up" data-aos-delay="400">
-            <button className="w-full sm:w-auto bg-[#2FA084] hover:bg-[#258069] text-white px-8 py-3.5 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer">
-              Coba SnapCheat Gratis
-            </button>
+            {!user && (
+              <button onClick={() => setCurrentView('register')} className="w-full sm:w-auto bg-[#2FA084] hover:bg-[#258069] text-white px-8 py-3.5 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                Coba SnapCheat Gratis
+              </button>
+            )}
             <button className="w-full sm:w-auto bg-white hover:bg-[#f5f5f5] text-[#171717] border border-[#eaeaea] px-8 py-3.5 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 cursor-pointer">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
               Lihat Demo

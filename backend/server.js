@@ -2,6 +2,9 @@ import express from 'express'; // Restart trigger 5
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client';
 
 // Inisialisasi Environment Variables
 dotenv.config();
@@ -22,6 +25,118 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'API_KEY_ANDA
 // ==========================================
 app.get('/', (req, res) => {
   res.send('SnapCheat Backend API is running successfully! 🚀');
+});
+
+// Inisialisasi Koneksi Database PostgreSQL via Prisma
+const prisma = new PrismaClient();
+
+// ==========================================
+// ENDPOINT: REGISTER (Buat Akun Baru)
+// ==========================================
+app.post('/api/register', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "Semua kolom harus diisi!" });
+    }
+
+    // Cek apakah email sudah dipakai
+    const userExists = await prisma.user.findUnique({ where: { email } });
+    if (userExists) {
+      return res.status(400).json({ error: "Email sudah terdaftar!" });
+    }
+
+    // Acak (Hash) password agar aman
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    // Simpan data user ke database PostgreSQL
+    const newUser = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword
+      }
+    });
+
+    res.status(201).json({ message: "Registrasi berhasil!", user: { name: newUser.name, email: newUser.email } });
+  } catch (error) {
+    res.status(500).json({ error: "Terjadi kesalahan pada server." });
+  }
+});
+
+// ==========================================
+// ENDPOINT: LOGIN (Masuk Akun)
+// ==========================================
+app.post('/api/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Cari user berdasarkan email
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return res.status(400).json({ error: "Email tidak ditemukan!" });
+    }
+
+    // Cocokkan password yang diinput dengan password asli di database
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: "Password salah!" });
+    }
+
+    // Buat "Tiket Masuk" (JWT Token)
+    const jwtSecret = process.env.JWT_SECRET || "rahasia_snapcheat_2026";
+    const token = jwt.sign({ id: user.id, email: user.email }, jwtSecret, { expiresIn: '7d' });
+
+    res.json({ message: "Login berhasil!", token, user: { name: user.name, email: user.email } });
+  } catch (error) {
+    res.status(500).json({ error: "Terjadi kesalahan pada server." });
+  }
+});
+
+// ==========================================
+// ENDPOINT: LOGIN VIA GOOGLE
+// ==========================================
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const { token } = req.body;
+    
+    // 1. Verifikasi token asli dengan mengambil data dari Google
+    const googleRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    if (!googleRes.ok) {
+      return res.status(401).json({ error: "Autentikasi Google gagal atau token kadaluarsa." });
+    }
+    
+    const userInfo = await googleRes.json();
+    const { email, name } = userInfo;
+
+    // 2. Cari apakah user sudah ada di database kita
+    let user = await prisma.user.findUnique({ where: { email } });
+    
+    if (!user) {
+      // 3. Jika belum pernah daftar, kita buatkan akun otomatis dengan password acak yang di-hash
+      const randomPassword = Math.random().toString(36).slice(-8) + Date.now();
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(randomPassword, salt);
+      
+      user = await prisma.user.create({
+        data: { name, email, password: hashedPassword }
+      });
+    }
+
+    // 4. Buatkan "Tiket Masuk" JWT seperti biasa
+    const jwtSecret = process.env.JWT_SECRET || "rahasia_snapcheat_2026";
+    const jwtToken = jwt.sign({ id: user.id, email: user.email }, jwtSecret, { expiresIn: '7d' });
+
+    res.json({ message: "Login Google berhasil!", token: jwtToken, user: { name: user.name, email: user.email } });
+  } catch (error) {
+    console.error("Google Auth Error:", error);
+    res.status(500).json({ error: "Terjadi kesalahan pada server." });
+  }
 });
 
 // ==========================================
