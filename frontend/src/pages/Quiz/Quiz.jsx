@@ -3,9 +3,14 @@ import { useNavigate } from 'react-router-dom';
 
 const Quiz = () => {
   const navigate = useNavigate();
-  const [materialText, setMaterialText] = useState('');
+  const [materialText, setMaterialText] = useState(() => {
+    return localStorage.getItem('snapcheat_quiz_cached_material') || '';
+  });
   const [isGenerating, setIsGenerating] = useState(false);
-  const [questions, setQuestions] = useState(null);
+  const [questions, setQuestions] = useState(() => {
+    const cached = localStorage.getItem('snapcheat_quiz_cached_questions');
+    return cached ? JSON.parse(cached) : null;
+  });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState('');
   const [isChecked, setIsChecked] = useState(false);
@@ -24,6 +29,7 @@ const Quiz = () => {
     setIsGenerating(true);
     setErrorMsg('');
     setQuestions(null);
+    localStorage.removeItem('snapcheat_quiz_cached_questions');
     setCurrentIndex(0);
     setUserAnswer('');
     setIsChecked(false);
@@ -41,6 +47,7 @@ const Quiz = () => {
 
       if (response.ok && data.flashcards) {
         setQuestions(data.flashcards);
+        localStorage.setItem('snapcheat_quiz_cached_questions', JSON.stringify(data.flashcards));
       } else {
         setErrorMsg(data.error || "Gagal membuat kuis. Silakan coba lagi.");
       }
@@ -57,6 +64,7 @@ const Quiz = () => {
   };
 
   const handleSelfGrade = (isCorrect) => {
+    const nextScore = isCorrect ? score + 1 : score;
     if (isCorrect) {
       setScore(prev => prev + 1);
     }
@@ -67,6 +75,8 @@ const Quiz = () => {
       setIsChecked(false);
     } else {
       setQuizFinished(true);
+      const percentage = Math.round((nextScore / questions.length) * 100);
+      localStorage.setItem('snapcheat_last_quiz_score', `${percentage}%`);
     }
   };
 
@@ -103,7 +113,9 @@ const Quiz = () => {
             <textarea
               value={materialText}
               onChange={(e) => {
-                setMaterialText(e.target.value);
+                const val = e.target.value;
+                setMaterialText(val);
+                localStorage.setItem('snapcheat_quiz_cached_material', val);
                 if (errorMsg) setErrorMsg('');
               }}
               placeholder="Tempel catatan kuliah atau materi pelajaran di sini..."
@@ -119,7 +131,7 @@ const Quiz = () => {
             <button
               onClick={handleStartQuiz}
               disabled={isGenerating}
-              className="w-full py-4 bg-[#2FA084] hover:bg-[#258069] disabled:opacity-50 text-white font-semibold rounded-2xl transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-sm text-sm"
+              className="w-full py-4 bg-[#2FA084] hover:bg-[#258069] disabled:opacity-50 text-white font-semibold rounded-2xl transition-colors cursor-pointer flex items-center justify-center gap-2 text-sm"
             >
               {isGenerating ? (
                 <>
@@ -137,7 +149,7 @@ const Quiz = () => {
         </div>
       ) : quizFinished ? (
         /* SCORE/RESULT STATE */
-        <div className="bg-gradient-to-br from-[#171717] to-[#333333] text-white p-12 rounded-[2rem] text-center max-w-xl mx-auto space-y-6 relative overflow-hidden shadow-xl">
+        <div className="bg-gradient-to-br from-[#171717] to-[#333333] text-white p-12 rounded-[2rem] text-center max-w-xl mx-auto space-y-6 relative overflow-hidden border-2 border-[#eaeaea]">
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#2FA084]/20 rounded-full blur-[80px] pointer-events-none"></div>
           
           <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto border border-white/20 backdrop-blur-sm">
@@ -182,7 +194,7 @@ const Quiz = () => {
         </div>
       ) : (
         /* ACTIVE QUIZ STATE */
-        <div className="bg-white border-2 border-[#eaeaea] p-8 rounded-[2rem] max-w-2xl mx-auto space-y-6 shadow-sm">
+        <div className="bg-white border-2 border-[#eaeaea] p-8 rounded-[2rem] max-w-2xl mx-auto space-y-6">
           <div className="flex justify-between items-center pb-4 border-b border-[#eaeaea]">
             <span className="text-xs font-bold tracking-widest text-[#2FA084] uppercase bg-[#2FA084]/10 px-3 py-1 rounded-full">
               Pertanyaan {currentIndex + 1} dari {questions.length}
@@ -211,7 +223,7 @@ const Quiz = () => {
                 <button
                   onClick={handleCheckAnswer}
                   disabled={!userAnswer.trim()}
-                  className="w-full py-3.5 bg-[#171717] hover:bg-[#333333] disabled:opacity-50 text-white font-semibold rounded-2xl text-sm transition-colors cursor-pointer shadow-sm"
+                  className="w-full py-3.5 bg-[#171717] hover:bg-[#333333] disabled:opacity-50 text-white font-semibold rounded-2xl text-sm transition-colors cursor-pointer"
                 >
                   Periksa Jawaban
                 </button>
@@ -236,7 +248,7 @@ const Quiz = () => {
                   <div className="flex gap-4 max-w-xs mx-auto">
                     <button
                       onClick={() => handleSelfGrade(true)}
-                      className="flex-1 py-2.5 bg-[#2FA084] hover:bg-[#258069] text-white font-semibold rounded-xl text-xs transition-colors cursor-pointer shadow-sm"
+                      className="flex-1 py-2.5 bg-[#2FA084] hover:bg-[#258069] text-white font-semibold rounded-xl text-xs transition-colors cursor-pointer"
                     >
                       👍 Ya, Benar
                     </button>

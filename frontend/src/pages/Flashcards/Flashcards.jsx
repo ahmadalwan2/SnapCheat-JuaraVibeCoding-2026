@@ -1,14 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const Flashcards = () => {
-  const [materialText, setMaterialText] = useState('');
+  const [materialText, setMaterialText] = useState(() => {
+    return localStorage.getItem('snapcheat_cached_material') || '';
+  });
   const [isGenerating, setIsGenerating] = useState(false);
-  const [flashcards, setFlashcards] = useState(null);
+  const [flashcards, setFlashcards] = useState(() => {
+    const cached = localStorage.getItem('snapcheat_cached_flashcards');
+    return cached ? JSON.parse(cached) : null;
+  });
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // STATE BARU: Menyimpan daftar riwayat deck belajar
+  const [history, setHistory] = useState(() => {
+    const cached = localStorage.getItem('snapcheat_decks_history');
+    return cached ? JSON.parse(cached) : [];
+  });
+
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+  // Sinkronisasi riwayat ke LocalStorage setiap kali berubah
+  useEffect(() => {
+    localStorage.setItem('snapcheat_decks_history', JSON.stringify(history));
+  }, [history]);
 
   const handleGenerate = async () => {
     if (!materialText.trim()) {
@@ -19,6 +35,7 @@ const Flashcards = () => {
     setIsGenerating(true);
     setErrorMsg('');
     setFlashcards(null);
+    localStorage.removeItem('snapcheat_cached_flashcards');
     setIsFlipped(false);
     setCurrentIndex(0);
 
@@ -33,6 +50,22 @@ const Flashcards = () => {
       
       if (response.ok && data.flashcards) {
         setFlashcards(data.flashcards);
+        localStorage.setItem('snapcheat_cached_flashcards', JSON.stringify(data.flashcards));
+
+        // Buat judul deck dinamis dari kalimat pertama materi
+        const firstLine = materialText.split('\n')[0].trim();
+        const cleanTitle = firstLine.length > 40 ? firstLine.substring(0, 40) + '...' : firstLine;
+        
+        // Simpan deck baru ke dalam riwayat
+        const newDeck = {
+          id: 'deck-' + Date.now(),
+          title: cleanTitle || 'Materi Belajar Baru',
+          materialText: materialText,
+          flashcards: data.flashcards,
+          createdAt: new Date().toISOString()
+        };
+
+        setHistory(prev => [newDeck, ...prev]);
       } else {
         setErrorMsg(data.error || "Gagal membuat flashcard. Silakan coba lagi.");
       }
@@ -43,32 +76,69 @@ const Flashcards = () => {
     }
   };
 
-  const handleNext = () => {
-    if (currentIndex < flashcards.length - 1) {
-      setIsFlipped(false);
-      setTimeout(() => {
-        setCurrentIndex(prev => prev + 1);
-      }, 150);
+  // Menghapus deck dari riwayat
+  const handleDeleteDeck = (deckId, e) => {
+    e.stopPropagation(); // Mencegah deck termuat saat diklik tombol hapus
+    setHistory(prev => prev.filter(item => item.id !== deckId));
+  };
+
+  // Memuat kembali deck dari riwayat ke area belajar aktif
+  const handleLoadDeck = (deck) => {
+    setMaterialText(deck.materialText);
+    localStorage.setItem('snapcheat_cached_material', deck.materialText);
+    setFlashcards(deck.flashcards);
+    localStorage.setItem('snapcheat_cached_flashcards', JSON.stringify(deck.flashcards));
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    setErrorMsg('');
+
+    // Scroll halus ke atas pada container dashboard agar kartu hafalan langsung terlihat
+    const scrollContainer = document.querySelector('.overflow-y-auto');
+    if (scrollContainer) {
+      scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
+  // Memulai pembuatan deck baru (membersihkan area aktif)
+  const handleCreateNew = () => {
+    setMaterialText('');
+    localStorage.removeItem('snapcheat_cached_material');
+    setFlashcards(null);
+    localStorage.removeItem('snapcheat_cached_flashcards');
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    setErrorMsg('');
+  };
+
   const handlePrev = () => {
-    if (currentIndex > 0) {
-      setIsFlipped(false);
-      setTimeout(() => {
-        setCurrentIndex(prev => prev - 1);
-      }, 150);
-    }
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : prev));
+    setIsFlipped(false);
+  };
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev < flashcards.length - 1 ? prev + 1 : prev));
+    setIsFlipped(false);
   };
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-[fadeIn_0.3s_ease-out] px-4 md:px-0">
       {/* Page Header */}
-      <div>
-        <h2 className="text-3xl font-bold font-heading text-[#171717]">Pembuat Flashcard AI</h2>
-        <p className="text-sm text-[#666666] mt-1">
-          Tempelkan catatan atau materi kuliah Anda, dan AI kami akan otomatis menyulapnya menjadi kartu hafalan interaktif.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-bold font-heading text-[#171717]">Pembuat Flashcard AI</h2>
+          <p className="text-sm text-[#666666] mt-1">
+            Tempelkan catatan materi kuliah Anda, dan AI kami akan menyulapnya menjadi kartu hafalan interaktif.
+          </p>
+        </div>
+        {flashcards && (
+          <button
+            onClick={handleCreateNew}
+            className="flex items-center justify-center gap-2 bg-[#2FA084] hover:bg-[#258069] text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors cursor-pointer w-full md:w-auto"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4"></path></svg>
+            Buat Deck Baru
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -82,7 +152,9 @@ const Flashcards = () => {
           <textarea
             value={materialText}
             onChange={(e) => {
-              setMaterialText(e.target.value);
+              const val = e.target.value;
+              setMaterialText(val);
+              localStorage.setItem('snapcheat_cached_material', val);
               if (errorMsg) setErrorMsg('');
             }}
             placeholder="Tempel catatan kuliah, artikel, atau ringkasan bab buku pelajaran di sini (Minimal 10 kata)..."
@@ -98,7 +170,7 @@ const Flashcards = () => {
           <button
             onClick={handleGenerate}
             disabled={isGenerating}
-            className="w-full py-3.5 bg-[#171717] hover:bg-[#333333] disabled:opacity-50 text-white font-semibold rounded-2xl transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-sm text-sm"
+            className="w-full py-3.5 bg-[#171717] hover:bg-[#333333] disabled:opacity-50 text-white font-semibold rounded-2xl transition-colors cursor-pointer flex items-center justify-center gap-2 text-sm"
           >
             {isGenerating ? (
               <>
@@ -129,7 +201,7 @@ const Flashcards = () => {
               >
                 {/* Flipping Inner Wrapper */}
                 <div 
-                  className={`w-full h-full relative rounded-[2rem] shadow-md border border-[#eaeaea] transition-all duration-500 ease-out`}
+                  className={`w-full h-full relative rounded-[2rem] border-2 border-[#eaeaea] transition-all duration-500 ease-out`}
                   style={{ 
                     transformStyle: 'preserve-3d', 
                     transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' 
@@ -213,6 +285,42 @@ const Flashcards = () => {
           )}
         </div>
       </div>
+
+      {/* SECTION BARU: Daftar Riwayat Deck Belajar */}
+      {history.length > 0 && (
+        <div className="pt-6 border-t border-[#eaeaea]">
+          <h3 className="text-xl font-bold font-heading text-[#171717] mb-4">Riwayat Deck Belajar Anda</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {history.map((deck) => (
+              <div
+                key={deck.id}
+                onClick={() => handleLoadDeck(deck)}
+                className="bg-white border-2 border-[#eaeaea] hover:border-[#2FA084] p-5 rounded-3xl cursor-pointer transition-all flex flex-col justify-between group h-40"
+              >
+                <div className="space-y-2">
+                  <div className="flex justify-between items-start gap-2">
+                    <span className="text-xl shrink-0">📚</span>
+                    <button
+                      onClick={(e) => handleDeleteDeck(deck.id, e)}
+                      className="text-[#a3a3a3] hover:text-red-500 p-1 rounded-lg hover:bg-red-50 transition-colors shrink-0 cursor-pointer"
+                      title="Hapus dari Riwayat"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                  </div>
+                  <h4 className="font-bold text-sm text-[#171717] leading-snug line-clamp-2 group-hover:text-[#2FA084] transition-colors">
+                    {deck.title}
+                  </h4>
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-[#a3a3a3] font-medium pt-2 border-t border-[#fafafa]">
+                  <span>{deck.flashcards.length} kartu hafalan</span>
+                  <span>{new Date(deck.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

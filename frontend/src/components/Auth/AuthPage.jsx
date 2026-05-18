@@ -109,7 +109,7 @@ const AuthPageContent = ({ type, onLoginSuccess }) => {
           </span>
         </div>
 
-        <div className="bg-white w-full max-w-[460px] rounded-[2rem] border border-[#eaeaea] p-10 md:p-12">
+        <div className="bg-white w-full max-w-[460px] rounded-[2rem] border border-[#eaeaea] p-6 sm:p-10 md:p-12">
           
           <div className="text-center mb-10">
             <h2 className="text-3xl font-bold text-[#171717] font-heading mb-2 tracking-normal">
