@@ -15,7 +15,13 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors()); // Mengizinkan request dari frontend (React)
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false
+}));
+app.options('*', cors()); // Handle preflight untuk semua route
 app.use(express.json()); // Mem-parsing JSON payload
 
 // Inisialisasi Google Gemini AI Client
